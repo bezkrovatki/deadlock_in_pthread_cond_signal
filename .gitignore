@@ -1,0 +1,6 @@
+*~
+.*.sw[a-z]
+*.bak
+*.orig
+*.rej
+test_pthread_cond_singal_deadlock.*
