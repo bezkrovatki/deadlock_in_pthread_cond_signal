@@ -1,10 +1,5 @@
-#include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/optional.hpp>
-
-#include <boost/thread/thread.hpp>
-#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <mutex>
 #include <iostream>
@@ -13,6 +8,7 @@
 #include <thread>
 #include <cassert>
 #include <atomic>
+#include <functional>
 
 #include <pthread.h>
 #include <sys/syscall.h>
@@ -34,29 +30,30 @@ void log(const char* msg)
     std::clog << "[" << tid << "] " << ts << ": " << msg << std::endl;
 }
 
-using mutex_t = boost::asio::detail::conditionally_enabled_mutex;
-using event_t = boost::asio::detail::conditionally_enabled_event;
 using events_per_second_t = unsigned;
 
-mutex_t g_m(true);
-event_t g_e;
+pthread_mutex_t g_m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t g_cv = PTHREAD_COND_INITIALIZER; 
+int g_state = 0;
 
 void producer(events_per_second_t rate)
 {
     SetThreadNameNative("producer");
     log("producer started");
     std::chrono::milliseconds period(unsigned(1000.0 / rate));
-    auto last = boost::posix_time::microsec_clock::universal_time();
+    auto last = std::chrono::high_resolution_clock::now();
     size_t events = 0u;
     while (!g_stop_producers.load(std::memory_order_relaxed))
     {
         {
-            mutex_t::scoped_lock l(g_m);
-            g_e.maybe_unlock_and_signal_one(l);
+            pthread_mutex_lock(&g_m);
+            g_state |= 1;
+            pthread_mutex_unlock(&g_m);
+            pthread_cond_signal(&g_cv);
         }
         ++events;
-        auto now = boost::posix_time::microsec_clock::universal_time(); 
-        auto diff_ms = (now - last).total_milliseconds();
+        auto now = std::chrono::high_resolution_clock::now();
+        auto diff_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count();
         if (diff_ms > 5000)
         {
             char buf[128];
@@ -75,18 +72,24 @@ void consumer(events_per_second_t max_rate)
     SetThreadNameNative("cosumer");
     log("consumer started");
     std::chrono::milliseconds period(unsigned(1000.0 / max_rate));
-    auto last = boost::posix_time::microsec_clock::universal_time();
+    auto last = std::chrono::high_resolution_clock::now();
     size_t wakeups = 0u;
     while (!g_stop_consumers.load(std::memory_order_relaxed))
     {
         {
-            mutex_t::scoped_lock l(g_m);
-            g_e.clear(l);
-            g_e.wait(l);
+            pthread_mutex_lock(&g_m);
+            g_state &= ~1;
+            while (0 == (g_state & 1))
+            {
+                g_state += 2;
+                pthread_cond_wait(&g_cv, &g_m);
+                g_state -= 2;
+            }
+            pthread_mutex_unlock(&g_m);
         }
         ++wakeups;
-        auto now = boost::posix_time::microsec_clock::universal_time(); 
-        auto diff_ms = (now - last).total_milliseconds();
+        auto now = std::chrono::high_resolution_clock::now();
+        auto diff_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count();
         if (diff_ms > 5000)
         {
             char buf[128];
@@ -114,15 +117,15 @@ int main(int argc, char* argv[])
     unsigned poolSize = std::thread::hardware_concurrency();
     unsigned nr_producers = poolSize * producer_factor;
 
-    boost::thread_group producers, consumers;
+    std::vector<std::thread> producers, consumers;
     for (unsigned i = 0; i < poolSize; ++i)
     {
-        consumers.create_thread(boost::bind(&consumer, consumer_max_rate));
+        consumers.emplace_back(std::bind(&consumer, consumer_max_rate));
     }
 
     for (unsigned i = 0; i < nr_producers; ++i)
     {
-        producers.create_thread(boost::bind(&producer, producer_rate));
+        producers.emplace_back(std::bind(&producer, producer_rate));
     }
 
     std::string line;
@@ -132,8 +135,10 @@ int main(int argc, char* argv[])
             break;
     }
     g_stop_consumers = true;
-    consumers.join_all();
+    for (auto& consumer: consumers)
+        consumer.join();
     g_stop_producers = true;
-    producers.join_all();
+    for (auto& producer: producers)
+        producer.join();
     return 0;
 }
