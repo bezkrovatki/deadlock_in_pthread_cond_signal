@@ -1,0 +1,126 @@
+events: Hits
+
+fl=(1) ../sysdeps/nptl/futex-internal.h
+fn=(1) futex_wait_simple[inline]
+cfl=(2) ../sysdeps/unix/sysv/linux/futex-internal.h
+cfn=(2) futex_wait[inline]
+calls=480 61
+135 480
+
+fl=(2)
+fn=(2)
+61 240
+
+fl=(2)
+fn=(2)
+cfl=(3) pthread_cond_signal.c
+cfn=(3) __pthread_cond_signal
+calls=239 47
+61 239
+
+fl=(2)
+fn=(2)
+cfl=(3)
+cfn=(3)
+calls=1 78
+61 1
+
+fl=(2)
+fn=(4) futex_wait_cancelable[inline]
+88 6
+
+fl=(2)
+fn=(4)
+cfl=(4) pthread_cond_wait.c
+cfn=(5) __pthread_cond_wait
+calls=6 655
+88 6
+
+fl=(5) ../sysdeps/unix/sysv/linux/read.c
+fn=(6) __GI___libc_read
+27 1
+
+fl=(6) /opt/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/aarch64-linux-gnu/include/c++/6.3.1/bits/basic_string.h
+fn=(7) std::getline[inline]
+cfl=??
+cfn=(8) 0x0000007facd1df7c
+calls=1 0
+5382 1
+
+fl=??
+fn=(9) 0x0000007facd61450
+cfl=(7) getc.c
+cfn=(10) _IO_getc
+calls=1 40
+0 1
+
+fl=??
+fn=(8)
+cfl=??
+cfn=(9)
+calls=1 0
+0 1
+
+fl=(8) fileops.c
+fn=(11) _IO_new_file_underflow
+cfl=(5)
+cfn=(6)
+calls=1 27
+531 1
+
+fl=(9) genops.c
+fn=(12) __GI__IO_default_uflow
+cfl=(8)
+cfn=(11)
+calls=1 531
+380 1
+
+fl=(7)
+fn=(10)
+cfl=(9)
+cfn=(12)
+calls=1 380
+40 1
+
+fl=(10) pthread_cond_common.c
+fn=(13) __condvar_acquire_lock[inline]
+cfl=(1)
+cfn=(1)
+calls=478 135
+280 478
+
+fl=(10)
+fn=(14) __condvar_quiesce_and_switch_g1[inline]
+cfl=(1)
+cfn=(1)
+calls=2 135
+412 2
+
+fl=(3)
+fn=(3)
+cfl=(10)
+cfn=(13)
+calls=239 280
+47 239
+
+fl=(3)
+fn=(3)
+cfl=(10)
+cfn=(14)
+calls=1 412
+78 1
+
+fl=(4)
+fn=(15) __pthread_cond_wait_common[inline]
+cfl=(2)
+cfn=(4)
+calls=12 88
+502 12
+
+fl=(4)
+fn=(5)
+cfl=(4)
+cfn=(15)
+calls=12 502
+655 12
+
