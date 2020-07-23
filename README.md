@@ -24,6 +24,7 @@ I was able to reproduce the issue in a less than 10 minutes.
 # Known workarounds
 * reduce the contention
 * ptrace the process when the deadlock situation is observed
+* call *pthread_cond_signal* from under the lock
 
 # Platforms
 Seen on ODROID N2 and other aarch64-based devices/servers.
